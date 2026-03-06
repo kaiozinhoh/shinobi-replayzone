@@ -1,0 +1,49 @@
+{
+  "name": "shinobi-replayzone",
+  "image": "ghcr.io/kaiozinhoh/shinobi-replayzone:latest",
+  "dockerfile": "./Dockerfile",
+  "buildContext": ".",
+  "ports": [
+    {
+      "published": 8080,
+      "target": 8080,
+      "protocol": "tcp"
+    }
+  ],
+  "environment": {
+    "NODE_ENV": "production",
+    "DB_HOST": "shinobi-db",
+    "DB_USER": "shinobi",
+    "DB_DATABASE": "shinobi",
+    "DB_PORT": "3306",
+    "DB_TYPE": "mysql",
+    "SHINOBI_PORT": "8080"
+  },
+  "volumes": [
+    {
+      "type": "volume",
+      "source": "shinobi_data",
+      "target": "/var/lib/shinobi"
+    },
+    {
+      "type": "volume", 
+      "source": "shinobi_videos",
+      "target": "/var/lib/shinobi/videos"
+    },
+    {
+      "type": "volume",
+      "source": "shinobi_streams", 
+      "target": "/var/lib/shinobi/streams"
+    }
+  ],
+  "healthcheck": {
+    "test": ["CMD", "curl", "-f", "http://localhost:8080/"],
+    "interval": "30s",
+    "timeout": "10s",
+    "retries": 3,
+    "start_period": "40s"
+  },
+  "restart": "unless-stopped",
+  "depends_on": ["shinobi-db"],
+  "networks": ["shinobi_network"]
+}

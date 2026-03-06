@@ -1,0 +1,80 @@
+{
+  "port": 8080,
+  "debugLog": false,
+  "enableFaceManager": false,
+  "videosDir": "/var/lib/shinobi/videos",
+  "passwordType": "sha256",
+  "detectorMergePamRegionTriggers": true,
+  "wallClockTimestampAsDefault": true,
+  "useBetterP2P": true,
+  "smtpServerOptions": {
+    "allowInsecureAuth": true
+  },
+  "addStorage": [
+    {"name":"streams","path":"/var/lib/shinobi/streams"},
+    {"name":"backup","path":"/var/lib/shinobi/backup"}
+  ],
+  "db": {
+    "host": "db",
+    "user": "shinobi",
+    "password": "",
+    "database": "shinobi",
+    "port": 3306,
+    "type": "mysql"
+  },
+  "mail": {
+    "service": "gmail",
+    "auth": {
+      "user": "",
+      "pass": ""
+    }
+  },
+  "cron": {
+    "key": "fd6c7849-904d-47bd-b562-89768deea915"
+  },
+  "pluginKeys": {},
+  "ssl": {
+    "key": "",
+    "cert": "",
+    "enabled": false
+  },
+  "ldap": {
+    "enabled": false,
+    "url": "ldap://localhost:389",
+    "bindDN": "cn=admin,dc=example,dc=org",
+    "bindCredentials": "admin",
+    "searchBase": "ou=people,dc=example,dc=org",
+    "searchFilter": "(uid={{username}})"
+  },
+  "cloudUploaders": {
+    "s3": {
+      "enabled": false,
+      "accessKeyId": "",
+      "secretAccessKey": "",
+      "region": "us-east-1",
+      "bucket": ""
+    },
+    "googleDrive": {
+      "enabled": false,
+      "clientId": "",
+      "clientSecret": "",
+      "refreshToken": ""
+    }
+  },
+  "notifications": {
+    "discord": {
+      "enabled": false,
+      "webhookUrl": ""
+    },
+    "telegram": {
+      "enabled": false,
+      "botToken": "",
+      "chatId": ""
+    }
+  },
+  "webHooks": {
+    "enabled": false,
+    "url": ""
+  },
+  "customAutoLoad": []
+}

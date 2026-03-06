@@ -1,0 +1,105 @@
+# Docker Compose para desenvolvimento
+version: '3.8'
+
+services:
+  shinobi:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: shinobi-app
+    restart: unless-stopped
+    ports:
+      - "${SHINOBI_PORT:-8080}:8080"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DB_HOST=db
+      - DB_USER=${DB_USER:-shinobi}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DATABASE=${DB_DATABASE:-shinobi}
+      - DB_PORT=3306
+      - DB_TYPE=mysql
+      - SUBSCRIPTION_ID=${SUBSCRIPTION_ID:-}
+      - PLUGIN_KEYS=${PLUGIN_KEYS:-{}}
+      - SSL_ENABLED=${SSL_ENABLED:-false}
+    volumes:
+      - shinobi_data:/var/lib/shinobi
+      - shinobi_videos:/var/lib/shinobi/videos
+      - shinobi_streams:/var/lib/shinobi/streams
+      - shinobi_logs:/var/lib/shinobi/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - shinobi_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: mariadb:10.11
+    container_name: shinobi-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE:-shinobi}
+      - MYSQL_USER=${DB_USER:-shinobi}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3306:3306"
+    networks:
+      - shinobi_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=1000
+      --innodb_buffer_pool_size=256M
+
+  # Redis para cache (opcional)
+  redis:
+    image: redis:7-alpine
+    container_name: shinobi-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shinobi_network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  shinobi_data:
+    driver: local
+  shinobi_videos:
+    driver: local
+  shinobi_streams:
+    driver: local
+  shinobi_logs:
+    driver: local
+  db_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  shinobi_network:
+    driver: bridge

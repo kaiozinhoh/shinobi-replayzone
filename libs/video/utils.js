@@ -395,6 +395,7 @@ module.exports = (s,config,lang) => {
         if(!targetVideoCodec || !targetAudioCodec || !targetQuality){
             switch(targetExtension){
                 case'mp4':
+                case'ts':
                     targetVideoCodec = `libx264`
                     targetAudioCodec = `aac -strict -2`
                     targetQuality = `-crf 1`

@@ -22,7 +22,7 @@
     "cors": "^2.8.5",
     "cws": "^2.0.0",
     "digest-fetch": "^1.2.1",
-    "discord.js": "^12.2.0",
+    "discord.js": "^12.5.3",
     "ejs": "^3.1.9",
     "engine.io": "^6.6.2",
     "express": "^4.21.1",

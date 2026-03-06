@@ -396,6 +396,7 @@
    "Bottom Left": "Inferior esquerdo",
    "WebM (libvpx)": "WebM (libvpx)",
    "MP4 (copy, libx264, libx265)": "MP4 (copy, libx264, libx265)",
+   "TS (copy, libx264, libx265)": "TS (copy, libx264, libx265)"
    "Default": "Padrão",
    "libvpx (Default)": "libvpx (Padrão)",
    "libvpx-vp9": "libvpx-vp9",

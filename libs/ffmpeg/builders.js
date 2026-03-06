@@ -53,7 +53,7 @@ module.exports = (s,config,lang) => {
             break;
             case'rtmp':
                 if(!monitor.details.rtmp_key)monitor.details.rtmp_key = ''
-                return `-i "rtmp://127.0.0.1:1935/${monitor.ke}_${monitor.mid}_${monitor.details.rtmp_key}"`
+                return `-i "rtmp://127.0.0.1:1935/${monitor.mid}"`
             break;
             case'h264':case'hls':case'mp4':
                 return `-i "${url}"`
@@ -129,6 +129,37 @@ module.exports = (s,config,lang) => {
         const timestampBackgroundColor = parameterContainer[`${prefix}timestamp_box_color`] ? parameterContainer[`${prefix}timestamp_box_color`] : '0x00000000@1'
         const timestampFontSize = parameterContainer[`${prefix}timestamp_font_size`] ? parameterContainer[`${prefix}timestamp_font_size`] : '10'
         return `drawtext=fontfile=${timestampFont}:text='%{localtime}':x=${timestampX}:y=${timestampY}:fontcolor=${timestampColor}:box=1:boxcolor=${timestampBackgroundColor}:fontsize=${timestampFontSize}`
+    }
+    const buildOverlayFiltersFromConfiguration = (prefix,monitor,detail,detailKey) => {
+        prefix = prefix ? prefix : ''
+        const parameterContainer = detail ? detailKey ?  monitor.details[detail][detailKey] :  monitor.details[detail] : monitor.details
+        const overlayImagePath = parameterContainer[`${prefix}overlay_image_path`]
+        const overlayX = parameterContainer[`${prefix}overlay_x`] ? parameterContainer[`${prefix}overlay_x`] : '10'
+        const overlayY = parameterContainer[`${prefix}overlay_y`] ? parameterContainer[`${prefix}overlay_y`] : '10'
+        const overlayWidth = parameterContainer[`${prefix}overlay_width`] ? parameterContainer[`${prefix}overlay_width`] : '-1'
+        const overlayHeight = parameterContainer[`${prefix}overlay_height`] ? parameterContainer[`${prefix}overlay_height`] : '-1'
+        const overlayOpacity = parameterContainer[`${prefix}overlay_opacity`] ? parameterContainer[`${prefix}overlay_opacity`] : '1.0'
+        
+        if (!overlayImagePath) {
+            return ''
+        }
+        
+        // Build overlay filter with scaling and positioning
+        let overlayFilter = `movie=${overlayImagePath}`
+        
+        // Add scaling if specified
+        if (overlayWidth !== '-1' || overlayHeight !== '-1') {
+            overlayFilter += `[overlay]; [overlay]scale=${overlayWidth}:${overlayHeight}`
+        }
+        
+        // Add opacity if not fully opaque
+        if (overlayOpacity !== '1.0') {
+            overlayFilter += `[overlay]; [overlay]format=rgba,colorchannelmixer=aa=${overlayOpacity}`
+        }
+        
+        overlayFilter += `[overlay]; [0:v][overlay]overlay=${overlayX}:${overlayY}`
+        
+        return overlayFilter
     }
     const createInputMap = (e, number, input) => {
         // inputs, input map
@@ -224,6 +255,12 @@ module.exports = (s,config,lang) => {
         if(channel.stream_watermark === "1" && channel.stream_watermark_location){
             streamFilters.push(buildWatermarkFiltersFromConfiguration(`stream_`,e,`stream_channels`,channelNumber))
         }
+        if(channel.stream_overlay === "1" && channel.stream_overlay_image_path){
+            const overlayFilter = buildOverlayFiltersFromConfiguration('stream_',e,`stream_channels`,channelNumber)
+            if(overlayFilter){
+                streamFilters.push(overlayFilter)
+            }
+        }
         if(channel.stream_rotate && channel.stream_rotate !== "no" && channel.stream_vcodec !== 'copy'){
             streamFilters.push(buildRotationFiltersFromConfiguration(`stream_`,e,`stream_channels`,channelNumber))
         }
@@ -295,7 +332,11 @@ module.exports = (s,config,lang) => {
                         streamFlags.push(`-g 1`)
                     }
                 }
-                streamFlags.push(`-f hls -hls_time ${hlsTime} -hls_list_size ${hlsListSize} -start_number 0 -hls_allow_cache 0 -hls_flags +delete_segments+omit_endlist+discont_start "${channelStreamDirectory}s.m3u8"`)
+                if (e.type === 'rtmp') {
+                    streamFlags.push(`-c copy -f hls -hls_time ${hlsTime} -hls_list_size ${hlsListSize} "/dev/shm/streams/1/${e.mid}/s.m3u8" -c copy -f segment -segment_format mpegts -segment_time 900 -strftime 1 "/home/Shinobi/videos/1/${e.mid}/%Y-%m-%dT%H-%M-%S.ts"`)
+                } else {
+                    streamFlags.push(`-f hls -hls_time ${hlsTime} -hls_list_size ${hlsListSize} -start_number 0 -hls_allow_cache 0 -hls_flags +delete_segments+omit_endlist+discont_start "${e.sdir}s.m3u8"`)
+                }
             break;
             case'mjpeg':
                 streamFlags.push(`-an -c:v mjpeg -f mpjpeg -boundary_tag shinobi pipe:${number}`)
@@ -388,6 +429,9 @@ module.exports = (s,config,lang) => {
         const streamFlags = []
         const streamType = e.details.stream_type ? e.details.stream_type : 'hls'
         if(streamType !== 'jpeg' && streamType !== 'useSubstream'){
+            if (e.type === 'rtmp') {
+                return buildStreamUrl(e);
+            }
             const isCudaEnabled = hasCudaEnabled(e)
             const streamFilters = []
             const videoCodecisCopy = e.details.stream_vcodec === 'copy'
@@ -411,6 +455,13 @@ module.exports = (s,config,lang) => {
             if(e.details.stream_watermark === "1" && e.details.stream_watermark_location){
                 streamFilters.push(buildWatermarkFiltersFromConfiguration(`stream_`,e))
             }
+            //stream - overlay
+            if(e.details.stream_overlay === "1" && e.details.stream_overlay_image_path){
+                const overlayFilter = buildOverlayFiltersFromConfiguration('stream_',e)
+                if(overlayFilter){
+                    streamFilters.push(overlayFilter)
+                }
+            }
             //stream - rotation
             if(e.details.stream_rotate && e.details.stream_rotate !== "no" && e.details.stream_vcodec !== 'copy'){
                 streamFilters.push(buildRotationFiltersFromConfiguration(`stream_`,e))
@@ -421,16 +472,16 @@ module.exports = (s,config,lang) => {
                 streamFlags.push(`-an`)
             }
             if(videoCodec === 'h264_vaapi'){
-		if (!e.details.hwaccel_format) {
+                if (!e.details.hwaccel_format) {
                     streamFilters.push('format=nv12,hwupload');
-		}
+                }
                 if(e.details.stream_scale_x && e.details.stream_scale_y){
-		    if (!e.details.hwaccel_format) {
-			streamFilters.push(',')
-		    }
+                    if (!e.details.hwaccel_format) {
+                        streamFilters.push(',')
+                    }
                     streamFilters.push('scale_vaapi=w='+e.details.stream_scale_x+':h='+e.details.stream_scale_y)
                 }
-        	}
+            }
             if(isCudaEnabled && (streamType === 'mjpeg' || streamType === 'b64')){
                 streamFilters.push('hwdownload,format=nv12')
             }
@@ -478,7 +529,11 @@ module.exports = (s,config,lang) => {
                             streamFlags.push(`-g 1`)
                         }
                     }
-                    streamFlags.push(`-f hls -hls_time ${hlsTime} -hls_list_size ${hlsListSize} -start_number 0 -hls_allow_cache 0 -hls_flags +delete_segments+omit_endlist+discont_start "${e.sdir}s.m3u8"`)
+                    if (e.type === 'rtmp') {
+                        streamFlags.push(`-c copy -f hls -hls_time ${hlsTime} -hls_list_size ${hlsListSize} "/dev/shm/streams/1/${e.mid}/s.m3u8" -c copy -f segment -segment_format mpegts -segment_time 900 -strftime 1 "/home/Shinobi/videos/1/${e.mid}/%Y-%m-%dT%H-%M-%S.ts"`)
+                    } else {
+                        streamFlags.push(`-f hls -hls_time ${hlsTime} -hls_list_size ${hlsListSize} -start_number 0 -hls_allow_cache 0 -hls_flags +delete_segments+omit_endlist+discont_start "${e.sdir}s.m3u8"`)
+                    }
                 break;
                 case'mjpeg':
                     streamFlags.push(`-an -c:v mjpeg -f mpjpeg -boundary_tag shinobi pipe:1`)
@@ -532,8 +587,9 @@ module.exports = (s,config,lang) => {
             const customRecordingFlags = []
             const videoCodecisCopy = e.details.vcodec === 'copy'
             const videoExtIsMp4 = e.ext === 'mp4'
-            const defaultVideoCodec = videoExtIsMp4 ? 'libx264' : 'libvpx'
-            const defaultAudioCodec = videoExtIsMp4 ? 'aac' : 'libvorbis'
+            const videoExtIsTs = e.ext === 'ts'
+            const defaultVideoCodec = videoExtIsMp4 ? 'libx264' : videoExtIsTs ? 'libx264' : 'libvpx'
+            const defaultAudioCodec = videoExtIsMp4 ? 'aac' : videoExtIsTs ? 'aac' : 'libvorbis'
             const videoCodec = e.details.vcodec === 'default' ? defaultVideoCodec : e.details.vcodec ? e.details.vcodec : defaultVideoCodec
             const audioCodec = e.details.acodec === 'default' ? defaultAudioCodec : e.details.acodec ? e.details.acodec : defaultAudioCodec
             const videoQuality = e.details.crf ? e.details.crf : '1'
@@ -563,6 +619,9 @@ module.exports = (s,config,lang) => {
             if(videoExtIsMp4 && !config.noDefaultRecordingSegmentFormatOptions){
                 customRecordingFlags.push(`-segment_format_options movflags=faststart`)
             }
+            if(videoExtIsTs && !config.noDefaultRecordingSegmentFormatOptions){
+                customRecordingFlags.push(`-segment_format mpegts`)
+            }
             if(videoCodec === 'h264_vaapi'){
                 recordingFilters.push('format=nv12,hwupload')
             }
@@ -585,6 +644,13 @@ module.exports = (s,config,lang) => {
             //record - watermark for -vf
             if(e.details.watermark === "1" && e.details.watermark_location){
                 recordingFilters.push(buildWatermarkFiltersFromConfiguration('',e))
+            }
+            //record - overlay for -vf
+            if(e.details.overlay === "1" && e.details.overlay_image_path){
+                const overlayFilter = buildOverlayFiltersFromConfiguration('',e)
+                if(overlayFilter){
+                    recordingFilters.push(overlayFilter)
+                }
             }
             if(e.details.rotate && e.details.rotate !== "no" && !videoCodecisCopy){
                 recordingFilters.push(buildRotationFiltersFromConfiguration(``,e))
@@ -850,6 +916,13 @@ module.exports = (s,config,lang) => {
         ffmpegParts.push(createInputMap(monitor,channelNumber,inputAndConnectionFields))
         ffmpegParts.push(createStreamChannel(monitor,channelNumber,outputFields))
         return ffmpegParts.join(' ')
+    }
+    function buildStreamUrl(monitor) {
+        if (!monitor) return '';
+        if (monitor.type === 'rtmp') {
+            return `-reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 2 -i "rtmp://127.0.0.1:1935/${monitor.mid}" -c copy -f hls -hls_time 2 -hls_list_size 3 "/dev/shm/streams/1/${monitor.mid}/s.m3u8" -c copy -f segment -segment_format mpegts -segment_time 900 -strftime 1 "/home/Shinobi/videos/1/${monitor.mid}/%Y-%m-%dT%H-%M-%S.ts"`;
+        }
+        return '';
     }
     return {
         createStreamChannel: createStreamChannel,

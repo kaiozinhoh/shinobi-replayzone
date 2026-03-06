@@ -652,7 +652,7 @@ module.exports = (s,config,lang) => {
             const runRecord = function(){
                 var ffmpegError = ''
                 var error
-                var filename = fileTime + '.mp4'
+                var filename = fileTime + (monitorDetails.event_record_format === 'ts' ? '.ts' : '.mp4')
                 let outputMap = `-map 0:0 `
                 const analyzeDuration = parseInt(monitorDetails.event_record_aduration) || 1000
                 const probeSize = parseInt(monitorDetails.event_record_probesize) || 32

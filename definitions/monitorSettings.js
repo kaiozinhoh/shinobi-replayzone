@@ -1872,6 +1872,11 @@ module.exports = (s,config,lang) => {
                          "name": "WebM",
                          "value": "webm",
                          "info": lang["fieldTextExtWebM"]
+                      },
+                      {
+                         "name": "TS",
+                         "value": "ts",
+                         "info": lang["fieldTextExtTS"]
                       }
                    ]
                 },

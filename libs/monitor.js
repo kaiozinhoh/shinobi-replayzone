@@ -950,4 +950,110 @@ module.exports = function(s,config,lang){
             monitorRestrictions: monitorRestrictions,
         }
     }
+    s.insertCompletedVideo = function(e,k,callback){
+        //e = monitor object
+        //k = video insertion object
+        s.checkDetails(e)
+        if(!k)k={};
+        e.dir = s.getVideoDirectory(e)
+        k.dir = e.dir.toString()
+        const activeMonitor = s.group[e.ke].activeMonitors[e.id]
+        //get file directory
+        k.fileExists = fs.existsSync(k.dir+k.file)
+        if(k.fileExists!==true){
+            k.dir = s.dir.videos+'/'+e.ke+'/'+e.id+'/'
+            k.fileExists = fs.existsSync(k.dir+k.file)
+            if(k.fileExists !== true){
+                s.dir.addStorage.forEach(function(v){
+                    if(k.fileExists !== true){
+                        k.dir = s.checkCorrectPathEnding(v.path)+e.ke+'/'+e.id+'/'
+                        k.fileExists = fs.existsSync(k.dir+k.file)
+                    }
+                })
+            }
+        }
+        if(k.fileExists === true){
+            //close video row
+            k.details = k.details && k.details instanceof Object ? k.details : {}
+            var listOEvents = activeMonitor.detector_motion_count || []
+            var listOTags = listOEvents.filter(row => row.details.reason === 'object').map(row => row.details.matrices.map(matrix => matrix.tag).join(',')).join(',').split(',')
+            if(listOTags && !k.objects){
+                k.objects = [...new Set(listOTags)].filter(item => !!item).join(',');
+            }else if(k.objects[0] instanceof Object){
+                k.objects = k.objects.map(matrix => matrix.tag).join(',').split(',').filter(item => !!item).join(',')
+            }
+            k.filename = k.filename || k.file
+            k.ext = k.ext || e.ext || k.filename.split('.')[1]
+            k.stat = fs.statSync(k.dir+k.file)
+            k.filesize = k.stat.size
+            k.filesizeMB = parseFloat((k.filesize/1048576).toFixed(2))
+            k.startTime = new Date(s.nameToTime(k.file))
+            k.endTime = new Date(k.endTime || k.stat.mtime)
+            
+            //send event for completed recording
+            if(config.childNodes.enabled === true && config.childNodes.mode === 'child' && config.childNodes.host){
+                const response = {
+                    mid: e.mid,
+                    ke: e.ke,
+                    filename: k.filename,
+                    ext: k.ext,
+                    size: k.filesize,
+                    filesize: k.filesize,
+                    objects: k.objects.substring(0, 510),
+                    time: s.timeObject(k.startTime).format('YYYY-MM-DD HH:mm:ss'),
+                    end: s.timeObject(k.endTime).format('YYYY-MM-DD HH:mm:ss')
+                }
+                var filePath = k.dir + k.filename;
+                sendVideoToMasterNode(filePath,response)
+            }else{
+                var href = '/videos/'+e.ke+'/'+e.mid+'/'+k.filename
+
+                const monitorEventsCounted = activeMonitor.detector_motion_count
+                s.txWithSubPermissions({
+                    f: 'video_build_success',
+                    hrefNoAuth: href,
+                    filename: k.filename,
+                    mid: e.mid,
+                    ke: e.ke,
+                    ext: k.ext,
+                    time: k.startTime,
+                    size: k.filesize,
+                    end: k.endTime,
+                    objects: k.objects,
+                    events: monitorEventsCounted && monitorEventsCounted.length > 0 ? monitorEventsCounted : null
+                },'GRP_'+e.ke,'video_view')
+                
+                // Gerenciar segmentos de vídeo
+                s.manageVideoSegments(e).then(() => {
+                    s.debugLog('Video segment management completed successfully');
+                }).catch(err => {
+                    s.debugLog('Error in video segment management:', err);
+                });
+                
+                //send new diskUsage values
+                var storageIndex = s.getVideoStorageIndex(e)
+                if(storageIndex){
+                    s.setDiskUsedForGroupAddStorage(e.ke,{
+                        size: k.filesizeMB,
+                        storageIndex: storageIndex
+                    })
+                }else{
+                    s.setDiskUsedForGroup(e.ke,k.filesizeMB)
+                }
+                s.onBeforeInsertCompletedVideoExtensions.forEach(function(extender){
+                    extender(e,k)
+                })
+                s.insertDatabaseRow(e,k,(err,response) => {
+                    if(callback)callback(err,response);
+                    postProcessCompletedMp4Video(response.insertQuery).then((isGood) => {
+                        if(!isGood)return console.error(`FAILED VIDEO INSERT`);
+                        s.insertCompletedVideoExtensions.forEach(function(extender){
+                            extender(e,k,response.insertQuery,response)
+                        })
+                    })
+                })
+            }
+        }
+        s.group[e.ke].activeMonitors[e.mid].detector_motion_count = []
+    }
 }

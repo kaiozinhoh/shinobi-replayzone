@@ -501,4 +501,212 @@ module.exports = function(s,config,lang){
         }
         return null
     }
+    s.manageVideoSegments = function(monitor) {
+        return new Promise((resolve, reject) => {
+            const groupKey = monitor.ke;
+            const monitorId = monitor.mid || monitor.id;
+            
+            s.debugLog(`Starting video segment management for monitor ${monitorId} in group ${groupKey}`);
+            
+            s.knexQuery({
+                action: "select",
+                columns: "*",
+                table: "Videos",
+                where: [
+                    ['ke', '=', groupKey],
+                    ['mid', '=', monitorId]
+                ],
+                orderBy: ['time', 'desc']
+            }, (err, videos) => {
+                if (err) {
+                    s.debugLog(`Error getting videos for monitor ${monitorId}:`, err);
+                    reject(err);
+                    return;
+                }
+
+                s.debugLog(`Found ${videos ? videos.length : 0} videos for monitor ${monitorId}`);
+                
+                // Se tiver mais de 3 vídeos, remove os mais antigos
+                if (videos && videos.length > 3) {
+                    const videosToDelete = videos.slice(3);
+                    s.debugLog(`Will delete ${videosToDelete.length} old videos for monitor ${monitorId}`);
+                    
+                    // Delete each video individually to ensure proper cleanup
+                    const deletePromises = videosToDelete.map(video => {
+                        return new Promise((resolveDelete) => {
+                            s.deleteVideo(video).then(() => {
+                                s.debugLog(`Successfully deleted video ${video.filename} for monitor ${monitorId}`);
+                                resolveDelete();
+                            }).catch(err => {
+                                s.debugLog(`Error deleting video ${video.filename}:`, err);
+                                resolveDelete();
+                            });
+                        });
+                    });
+
+                    Promise.all(deletePromises).then(() => {
+                        s.debugLog(`Completed video segment cleanup for monitor ${monitorId}`);
+                        resolve();
+                    }).catch(err => {
+                        s.debugLog(`Error during video cleanup:`, err);
+                        resolve();
+                    });
+                } else {
+                    s.debugLog(`No videos to delete for monitor ${monitorId}`);
+                    resolve();
+                }
+            });
+        });
+    };
+    s.startPeriodicVideoCleanup = function() {
+        // Verifica a cada 5 minutos
+        setInterval(() => {
+            s.debugLog('Starting periodic video cleanup check');
+            s.knexQuery({
+                action: "select",
+                columns: ["ke", "mid"],
+                distinct: true,
+                table: "Videos"
+            }, (err, monitors) => {
+                if (err) {
+                    s.debugLog('Error getting monitors for cleanup:', err);
+                    return;
+                }
+
+                monitors.forEach(monitor => {
+                    s.manageVideoSegments(monitor).catch(err => {
+                        s.debugLog(`Error in periodic cleanup for monitor ${monitor.mid}:`, err);
+                    });
+                });
+            });
+        }, 5 * 60 * 1000); // 5 minutos
+    };
+
+    // Iniciar a verificação periódica quando o módulo for carregado
+    s.startPeriodicVideoCleanup();
+
+    s.cleanupOldVideos = function() {
+        console.log('=== INICIANDO LIMPEZA DE VÍDEOS ANTIGOS ===');
+        s.debugLog('=== INICIANDO LIMPEZA DE VÍDEOS ANTIGOS ===');
+        
+        // Busca todos os monitores que têm vídeos usando uma query mais compatível
+        s.knexQuery({
+            action: "select",
+            columns: ["ke", "mid"],
+            table: "Videos",
+            groupBy: ["ke", "mid"]
+        }, (err, monitors) => {
+            if (err) {
+                console.error('ERRO ao buscar monitores:', err);
+                s.debugLog('ERRO ao buscar monitores:', err);
+                return;
+            }
+
+            if (!monitors || monitors.length === 0) {
+                console.log('Nenhum monitor encontrado com vídeos');
+                s.debugLog('Nenhum monitor encontrado com vídeos');
+                return;
+            }
+
+            console.log(`Encontrados ${monitors.length} monitores com vídeos`);
+            s.debugLog(`Encontrados ${monitors.length} monitores com vídeos`);
+
+            // Para cada monitor
+            monitors.forEach((monitor, monitorIndex) => {
+                // Adiciona um pequeno delay entre os monitores
+                setTimeout(() => {
+                    // Busca todos os vídeos deste monitor, ordenados do mais recente para o mais antigo
+                    s.knexQuery({
+                        action: "select",
+                        columns: "*",
+                        table: "Videos",
+                        where: [
+                            ['ke', '=', monitor.ke],
+                            ['mid', '=', monitor.mid]
+                        ],
+                        orderBy: ['time', 'desc']
+                    }, (err, videos) => {
+                        if (err) {
+                            console.error(`ERRO ao buscar vídeos do monitor ${monitor.mid}:`, err);
+                            s.debugLog(`ERRO ao buscar vídeos do monitor ${monitor.mid}:`, err);
+                            return;
+                        }
+
+                        if (!videos || videos.length === 0) {
+                            console.log(`Monitor ${monitor.mid}: Nenhum vídeo encontrado`);
+                            s.debugLog(`Monitor ${monitor.mid}: Nenhum vídeo encontrado`);
+                            return;
+                        }
+
+                        console.log(`Monitor ${monitor.mid}: Encontrados ${videos.length} vídeos`);
+                        s.debugLog(`Monitor ${monitor.mid}: Encontrados ${videos.length} vídeos`);
+
+                        // Se tiver mais de 3 vídeos
+                        if (videos.length > 3) {
+                            const videosToDelete = videos.slice(3);
+                            console.log(`Monitor ${monitor.mid}: Vou deletar ${videosToDelete.length} vídeos antigos`);
+                            s.debugLog(`Monitor ${monitor.mid}: Vou deletar ${videosToDelete.length} vídeos antigos`);
+
+                            // Deleta cada vídeo antigo com um pequeno delay entre eles
+                            videosToDelete.forEach((video, videoIndex) => {
+                                setTimeout(() => {
+                                    const videoPath = s.getVideoDirectory(video) + s.formattedTime(video.time) + '.' + video.ext;
+                                    
+                                    console.log(`Tentando deletar: ${videoPath}`);
+                                    s.debugLog(`Tentando deletar: ${videoPath}`);
+                                    
+                                    // Deleta o arquivo físico usando o sistema do Shinobi
+                                    try {
+                                        s.file('delete', videoPath);
+                                        console.log(`Arquivo deletado com sucesso: ${videoPath}`);
+                                        s.debugLog(`Arquivo deletado com sucesso: ${videoPath}`);
+                                    } catch (err) {
+                                        console.error(`ERRO ao deletar arquivo ${videoPath}:`, err);
+                                        s.debugLog(`ERRO ao deletar arquivo ${videoPath}:`, err);
+                                    }
+                                    
+                                    // Remove do banco de dados
+                                    s.knexQuery({
+                                        action: "delete",
+                                        table: "Videos",
+                                        where: [
+                                            ['ke', '=', video.ke],
+                                            ['mid', '=', video.mid],
+                                            ['time', '=', video.time]
+                                        ]
+                                    }, (err) => {
+                                        if (err) {
+                                            console.error(`ERRO ao remover registro do banco para ${videoPath}:`, err);
+                                            s.debugLog(`ERRO ao remover registro do banco para ${videoPath}:`, err);
+                                        } else {
+                                            console.log(`Registro removido do banco: ${videoPath}`);
+                                            s.debugLog(`Registro removido do banco: ${videoPath}`);
+                                        }
+                                    });
+                                }, videoIndex * 1000); // 1 segundo entre cada vídeo
+                            });
+                        } else {
+                            console.log(`Monitor ${monitor.mid}: Não há vídeos para deletar`);
+                            s.debugLog(`Monitor ${monitor.mid}: Não há vídeos para deletar`);
+                        }
+                    });
+                }, monitorIndex * 2000); // 2 segundos entre cada monitor
+            });
+        });
+    };
+
+    // Adiciona a função de limpeza ao sistema de eventos do Shinobi
+    s.onBeforeInsertCompletedVideoExtensions.push(function(monitor, video) {
+        s.cleanupOldVideos();
+    });
+
+    // Inicia o processo de limpeza a cada 5 minutos
+    setInterval(() => {
+        s.cleanupOldVideos();
+    }, 5 * 60 * 1000);
+
+    // Executa a primeira limpeza após 10 segundos do carregamento
+    setTimeout(() => {
+        s.cleanupOldVideos();
+    }, 10000);
 }

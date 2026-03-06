@@ -967,7 +967,7 @@ class NodeRtmpSession {
     if (typeof invokeMessage.streamName !== 'string') {
       return;
     }
-    this.publishStreamPath = '/' + this.appname + '/' + invokeMessage.streamName.split('?')[0];
+    this.publishStreamPath = '/' + invokeMessage.streamName.split('?')[0];
     this.publishArgs = QueryString.parse(invokeMessage.streamName.split('?')[1]);
     this.publishStreamId = this.parserPacket.header.stream_id;
     if (!this.isIPC) {
@@ -980,7 +980,6 @@ class NodeRtmpSession {
     if (this.config.auth && this.config.auth.publish && !this.isLocal && !this.isIPC) {
       let results = NodeCoreUtils.verifyAuth(this.publishArgs.sign, this.publishStreamPath, this.config.auth.secret);
       if (!results) {
-        // Logger.log(`[rtmp publish] Unauthorized. id=${this.id} streamPath=${this.publishStreamPath} streamId=${this.publishStreamId} sign=${this.publishArgs.sign} `);
         this.sendStatusMessage(this.publishStreamId, 'error', 'NetStream.publish.Unauthorized', 'Authorization required.');
         return;
       }
@@ -1022,7 +1021,7 @@ class NodeRtmpSession {
     if (typeof invokeMessage.streamName !== 'string') {
       return;
     }
-    this.playStreamPath = '/' + this.appname + '/' + invokeMessage.streamName.split('?')[0];
+    this.playStreamPath = '/' + invokeMessage.streamName.split('?')[0];
     this.playArgs = QueryString.parse(invokeMessage.streamName.split('?')[1]);
     this.playStreamId = this.parserPacket.header.stream_id;
     if (!this.isIPC) {
@@ -1035,7 +1034,6 @@ class NodeRtmpSession {
     if (this.config.auth && this.config.auth.play && !this.isLocal && !this.isIPC) {
       let results = NodeCoreUtils.verifyAuth(this.playArgs.sign, this.playStreamPath, this.config.auth.secret);
       if (!results) {
-        // Logger.log(`[rtmp play] Unauthorized. id=${this.id} streamPath=${this.playStreamPath}  streamId=${this.playStreamId} sign=${this.playArgs.sign}`);
         this.sendStatusMessage(this.playStreamId, 'error', 'NetStream.play.Unauthorized', 'Authorization required.');
         return;
       }

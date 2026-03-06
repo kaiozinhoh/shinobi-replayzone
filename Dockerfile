@@ -1,72 +1,99 @@
-ARG BASE_IMAGE=node:18-buster-slim
-FROM ${BASE_IMAGE}
+# Multi-stage build para otimizar tamanho da imagem
+FROM node:18-bookworm-slim as builder
 
-ARG DEBIAN_FRONTEND=noninteractive \
-    EXCLUDE_DB=false
+# Instalar dependências de build
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    pkg-config \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV DB_USER=majesticflame \
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Imagem final
+FROM node:18-bookworm-slim
+
+# Argumentos de build
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Variáveis de ambiente padrão
+ENV NODE_ENV=production \
+    DB_USER=majesticflame \
     DB_PASSWORD='' \
-    DB_HOST='localhost' \
+    DB_HOST=localhost \
     DB_DATABASE=ccio \
     DB_PORT=3306 \
-    DB_TYPE='mysql' \
+    DB_TYPE=mysql \
     SUBSCRIPTION_ID=sub_XXXXXXXXXXXX \
     PLUGIN_KEYS='{}' \
-    SSL_ENABLED='false' \
-    SSL_COUNTRY='CA' \
-    SSL_STATE='BC' \
-    SSL_LOCATION='Vancouver' \
+    SSL_ENABLED=false \
+    SSL_COUNTRY=CA \
+    SSL_STATE=BC \
+    SSL_LOCATION=Vancouver \
     SSL_ORGANIZATION='Shinobi Systems' \
     SSL_ORGANIZATION_UNIT='IT Department' \
-    SSL_COMMON_NAME='nvr.ninja'
+    SSL_COMMON_NAME='nvr.ninja' \
+    SHINOBI_PORT=8080
+
+# Instalar dependências do sistema necessárias
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    wget \
+    curl \
+    net-tools \
+    sudo \
+    procps \
+    coreutils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar PM2 globalmente
+RUN npm install -g pm2
+
+# Criar usuário não-root
+RUN groupadd -r shinobi && useradd -r -g shinobi shinobi
+
+# Criar diretórios necessários
+RUN mkdir -p /home/Shinobi /var/lib/shinobi/videos /var/lib/shinobi/streams \
+    && chown -R shinobi:shinobi /home/Shinobi /var/lib/shinobi
 
 WORKDIR /home/Shinobi
-COPY . ./
 
-RUN apt-get update -y
-RUN apt-get upgrade -y
+# Copiar node_modules do builder
+COPY --from=builder /app/node_modules ./node_modules
 
-RUN apt-get install -y \
-        wget \
-        curl \
-        net-tools \
-        software-properties-common \
-        build-essential \
-        git \
-        python3 \
-        sudo \
-        pkg-config \
-        apt-utils \
-        yasm \
-        bzip2 \
-        coreutils \
-        procps \
-        gnutls-bin \
-        nasm \
-        tar \
-        make \
-        g++ \
-        gcc \
-        tar
+# Copiar código da aplicação
+COPY --chown=shinobi:shinobi . .
 
-RUN sh /home/Shinobi/Docker/install_ffmpeg.sh
-RUN sh /home/Shinobi/Docker/install_mariadb.sh
-RUN sh /home/Shinobi/Docker/install_nodejs.sh
+# Copiar configuração PM2 otimizada
+COPY --chown=shinobi:shinobi Docker/pm2.prod.yml ./pm2.yml
 
-RUN chmod 777 /home/Shinobi
-RUN chmod -R 777 /home/Shinobi/plugins
-RUN chmod -f +x /home/Shinobi/Docker/init.sh
+# Copiar e configurar entrypoint personalizado
+COPY --chown=shinobi:shinobi docker-entrypoint.sh /usr/local/bin/
+COPY --chown=shinobi:shinobi conf.docker.json ./
 
-RUN sed -i -e 's/\r//g' /home/Shinobi/Docker/init.sh
+# Dar permissões necessárias
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x Docker/init.sh && \
+    chmod -R 755 plugins && \
+    sed -i -e 's/\r//g' Docker/init.sh && \
+    sed -i -e 's/\r//g' /usr/local/bin/docker-entrypoint.sh
 
-RUN apt-get update -y --fix-missing
-RUN apt-get upgrade -y
+# Criar volumes para dados persistentes
+VOLUME ["/var/lib/shinobi"]
 
-VOLUME ["/home/Shinobi"]
-VOLUME ["/var/lib/mysql"]
+# Expor portas
+EXPOSE 8080
 
-EXPOSE 8080 443 21 25
+# Usar usuário não-root
+USER shinobi
 
-ENTRYPOINT ["/home/Shinobi/Docker/init.sh"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/ || exit 1
 
-CMD [ "pm2-docker", "/home/Shinobi/Docker/pm2.yml" ]
+# Comando de inicialização
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["pm2-runtime", "start", "pm2.yml"]

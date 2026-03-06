@@ -1,0 +1,69 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+docs/
+
+# Node modules (será instalado no container)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Build artifacts
+dist/
+build/
+out/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Docker files (exceto o principal)
+Dockerfile.old
+docker-compose*.yml
+
+# Scripts de desenvolvimento
+scripts/setup.sh
+
+# Arquivos de configuração específicos do EasyPanel
+easypanel.yml
+.easypanel.env*

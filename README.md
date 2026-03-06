@@ -1,4 +1,4 @@
-# Shinobi CCTV - Sistema de Videovigilância
+# Shinobi ReplayZone - Sistema de Videovigilância
 
 ![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 ![EasyPanel](https://img.shields.io/badge/EasyPanel-Compatible-green)

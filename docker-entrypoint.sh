@@ -13,16 +13,79 @@ log() {
 log "Criando diretórios necessários..."
 mkdir -p /var/lib/shinobi/{videos,streams,logs,backup}
 
-# Usar script Node.js para configuração robusta
-log "Configurando arquivo de configuração com script Node.js..."
-node /home/Shinobi/fix-config.js
+# Sempre recriar o arquivo de configuração para garantir que as variáveis estejam corretas
+log "Configurando arquivo de configuração..."
 
-# Garantir que mysql2 está disponível
-log "Verificando drivers MySQL..."
-if ! node -e "require('mysql2')" 2>/dev/null; then
-    log "Instalando mysql2..."
-    npm install mysql2 --save
+# Definir valores padrão se as variáveis não estiverem definidas
+export DB_HOST="${DB_HOST:-db}"
+export DB_USER="${DB_USER:-shinobi}"
+export DB_DATABASE="${DB_DATABASE:-shinobi}"
+export DB_PORT="${DB_PORT:-3306}"
+export DB_PASSWORD="${DB_PASSWORD:-shinobi123}"
+
+# Log das variáveis (com senha mascarada)
+log "Aplicando variáveis de ambiente..."
+log "DB_HOST: ${DB_HOST}"
+log "DB_USER: ${DB_USER}"
+log "DB_DATABASE: ${DB_DATABASE}"
+log "DB_PORT: ${DB_PORT}"
+if [ -n "$DB_PASSWORD" ]; then
+    log "DB_PASSWORD: ****** (definida)"
+else
+    log "DB_PASSWORD: (VAZIA - ERRO!)"
 fi
+
+# Usar uma abordagem mais robusta para substituição
+cat > /home/Shinobi/conf.json << EOF
+{
+  "port": 8080,
+  "debugLog": false,
+  "enableFaceManager": false,
+  "videosDir": "/var/lib/shinobi/videos",
+  "passwordType": "sha256",
+  "detectorMergePamRegionTriggers": true,
+  "wallClockTimestampAsDefault": true,
+  "useBetterP2P": true,
+  "smtpServerOptions": {
+    "allowInsecureAuth": true
+  },
+  "addStorage": [
+    {"name":"streams","path":"/var/lib/shinobi/streams"},
+    {"name":"backup","path":"/var/lib/shinobi/backup"}
+  ],
+  "db": {
+    "host": "${DB_HOST:-db}",
+    "user": "${DB_USER:-shinobi}",
+    "password": "${DB_PASSWORD:-}",
+    "database": "${DB_DATABASE:-shinobi}",
+    "port": ${DB_PORT:-3306},
+    "type": "mysql"
+  },
+  "mail": {
+    "service": "gmail",
+    "auth": {
+      "user": "",
+      "pass": ""
+    }
+  },
+  "cron": {
+    "key": "fd6c7849-904d-47bd-b562-89768deea915"
+  },
+  "pluginKeys": {},
+  "ssl": {
+    "key": "",
+    "cert": "",
+    "enabled": false
+  },
+  "customAutoLoad": []
+}
+EOF
+
+log "Arquivo de configuração criado com as seguintes configurações de banco:"
+log "Host: ${DB_HOST:-db}"
+log "User: ${DB_USER:-shinobi}"
+log "Database: ${DB_DATABASE:-shinobi}"
+log "Port: ${DB_PORT:-3306}"
 
 # Configurar PM2 logs
 log "Configurando logs do PM2..."

@@ -66,9 +66,6 @@ WORKDIR /home/Shinobi
 # Copiar node_modules do builder
 COPY --from=builder /app/node_modules ./node_modules
 
-# Garantir que mysql2 está instalado
-RUN npm install mysql2 --save
-
 # Copiar código da aplicação
 COPY --chown=shinobi:shinobi . .
 
@@ -78,19 +75,16 @@ COPY --chown=shinobi:shinobi Docker/pm2.prod.yml ./pm2.yml
 # Copiar e configurar entrypoint personalizado
 COPY --chown=shinobi:shinobi docker-entrypoint.sh /usr/local/bin/
 COPY --chown=shinobi:shinobi wait-for-db.sh /usr/local/bin/
-COPY --chown=shinobi:shinobi fix-config.js /home/Shinobi/
 COPY --chown=shinobi:shinobi conf.docker.json ./
 
 # Dar permissões necessárias
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     chmod +x /usr/local/bin/wait-for-db.sh && \
-    chmod +x /home/Shinobi/fix-config.js && \
     chmod +x Docker/init.sh && \
     chmod -R 755 plugins && \
     sed -i -e 's/\r//g' Docker/init.sh && \
     sed -i -e 's/\r//g' /usr/local/bin/docker-entrypoint.sh && \
-    sed -i -e 's/\r//g' /usr/local/bin/wait-for-db.sh && \
-    sed -i -e 's/\r//g' /home/Shinobi/fix-config.js
+    sed -i -e 's/\r//g' /usr/local/bin/wait-for-db.sh
 
 # Criar volumes para dados persistentes
 VOLUME ["/var/lib/shinobi"]

@@ -62,8 +62,9 @@ cat > /home/Shinobi/conf.json << EOF
     "password": "${DB_PASSWORD}",
     "database": "${DB_DATABASE}",
     "port": ${DB_PORT},
-    "type": "mysql"
+    "type": "mysql2"
   },
+  "databaseType": "mysql2",
   "mail": {
     "service": "gmail",
     "auth": {
@@ -89,6 +90,13 @@ log "Host: ${DB_HOST:-db}"
 log "User: ${DB_USER:-shinobi}"
 log "Database: ${DB_DATABASE:-shinobi}"
 log "Port: ${DB_PORT:-3306}"
+
+# Garantir que mysql2 está disponível
+log "Verificando drivers MySQL..."
+if ! node -e "require('mysql2')" 2>/dev/null; then
+    log "Instalando mysql2..."
+    npm install mysql2 --save
+fi
 
 # Configurar PM2 logs
 log "Configurando logs do PM2..."

@@ -66,6 +66,9 @@ WORKDIR /home/Shinobi
 # Copiar node_modules do builder
 COPY --from=builder /app/node_modules ./node_modules
 
+# Garantir que mysql2 está instalado
+RUN npm install mysql2 --save
+
 # Copiar código da aplicação
 COPY --chown=shinobi:shinobi . .
 

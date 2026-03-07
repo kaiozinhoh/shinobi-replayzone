@@ -38,6 +38,7 @@
     "moment": "^2.29.4",
     "mp4frag": "^0.6.1",
     "mqtt": "^4.3.7",
+    "mysql": "^2.18.1",
     "mysql2": "^3.9.7",
     "node-abort-controller": "^3.0.1",
     "node-fetch": "^2.6.7",

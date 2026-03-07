@@ -29,6 +29,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: ["wait-for-db.sh", "db", "3306", "pm2-runtime", "start", "pm2.yml"]
     networks:
       - shinobi_network
     healthcheck:

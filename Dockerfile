@@ -44,9 +44,11 @@ RUN apt-get update && apt-get install -y \
     wget \
     curl \
     net-tools \
+    netcat-openbsd \
     sudo \
     procps \
     coreutils \
+    dumb-init \
     && rm -rf /var/lib/apt/lists/*
 
 # Instalar PM2 globalmente
@@ -72,14 +74,17 @@ COPY --chown=shinobi:shinobi Docker/pm2.prod.yml ./pm2.yml
 
 # Copiar e configurar entrypoint personalizado
 COPY --chown=shinobi:shinobi docker-entrypoint.sh /usr/local/bin/
+COPY --chown=shinobi:shinobi wait-for-db.sh /usr/local/bin/
 COPY --chown=shinobi:shinobi conf.docker.json ./
 
 # Dar permissões necessárias
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/wait-for-db.sh && \
     chmod +x Docker/init.sh && \
     chmod -R 755 plugins && \
     sed -i -e 's/\r//g' Docker/init.sh && \
-    sed -i -e 's/\r//g' /usr/local/bin/docker-entrypoint.sh
+    sed -i -e 's/\r//g' /usr/local/bin/docker-entrypoint.sh && \
+    sed -i -e 's/\r//g' /usr/local/bin/wait-for-db.sh
 
 # Criar volumes para dados persistentes
 VOLUME ["/var/lib/shinobi"]
@@ -91,8 +96,8 @@ EXPOSE 8080
 USER shinobi
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/ || wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
 
 # Comando de inicialização
 ENTRYPOINT ["docker-entrypoint.sh"]

@@ -12,7 +12,6 @@ log() {
 # Criar diretórios necessários
 log "Criando diretórios necessários..."
 mkdir -p /var/lib/shinobi/{videos,streams,logs,backup}
-chown -R shinobi:shinobi /var/lib/shinobi
 
 # Configurar arquivo de configuração se não existir
 if [ ! -f "/home/Shinobi/conf.json" ]; then
@@ -24,22 +23,9 @@ if [ ! -f "/home/Shinobi/conf.json" ]; then
     sed -i "s/\"user\": \"shinobi\"/\"user\": \"${DB_USER:-shinobi}\"/g" /home/Shinobi/conf.json
     sed -i "s/\"database\": \"shinobi\"/\"database\": \"${DB_DATABASE:-shinobi}\"/g" /home/Shinobi/conf.json
     sed -i "s/\"host\": \"db\"/\"host\": \"${DB_HOST:-db}\"/g" /home/Shinobi/conf.json
+    sed -i "s/\"port\": 3306/\"port\": ${DB_PORT:-3306}/g" /home/Shinobi/conf.json
     
     log "Arquivo de configuração criado e configurado"
-fi
-
-# Aguardar banco de dados ficar disponível
-log "Aguardando banco de dados..."
-while ! nc -z "${DB_HOST:-db}" "${DB_PORT:-3306}"; do
-    log "Aguardando banco de dados em ${DB_HOST:-db}:${DB_PORT:-3306}..."
-    sleep 2
-done
-log "Banco de dados disponível!"
-
-# Executar migrações/inicialização do banco se necessário
-if [ -f "/home/Shinobi/sql/framework.sql" ]; then
-    log "Verificando se o banco precisa ser inicializado..."
-    # Aqui você pode adicionar lógica para verificar e inicializar o banco
 fi
 
 # Configurar PM2 logs

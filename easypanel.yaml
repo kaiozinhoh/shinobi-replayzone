@@ -1,0 +1,77 @@
+name: shinobi-cctv
+services:
+  - type: app
+    data:
+      projectName: shinobi-replayzone
+      serviceName: shinobi
+      source:
+        type: github
+        repo: kaiozinhoh/shinobi-replayzone
+        branch: main
+      build:
+        type: dockerfile
+        dockerfile: Dockerfile
+      deploy:
+        replicas: 1
+        command: ["wait-for-db.sh", "shinobi-db", "3306", "docker-entrypoint.sh", "pm2-runtime", "start", "pm2.yml"]
+        env:
+          - name: NODE_ENV
+            value: production
+          - name: DB_HOST
+            value: shinobi-db
+          - name: DB_USER
+            value: shinobi
+          - name: DB_PASSWORD
+            value: $DB_PASSWORD
+          - name: DB_DATABASE
+            value: shinobi
+          - name: DB_ROOT_PASSWORD
+            value: $DB_ROOT_PASSWORD
+          - name: DB_PORT
+            value: "3306"
+          - name: DB_TYPE
+            value: mysql
+          - name: SHINOBI_PORT
+            value: "8080"
+          - name: SUBSCRIPTION_ID
+            value: sub_XXXXXXXXXXXX
+          - name: PLUGIN_KEYS
+            value: "{}"
+          - name: SSL_ENABLED
+            value: "false"
+        ports:
+          - published: 8080
+            target: 8080
+        volumes:
+          - name: shinobi-data
+            mountPath: /var/lib/shinobi
+          - name: shinobi-videos
+            mountPath: /var/lib/shinobi/videos
+          - name: shinobi-streams
+            mountPath: /var/lib/shinobi/streams
+        healthCheck:
+          test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+          startPeriod: 60s
+
+  - type: mariadb
+    data:
+      projectName: shinobi-replayzone
+      serviceName: shinobi-db
+      password: $DB_ROOT_PASSWORD
+      username: shinobi
+      userPassword: $DB_PASSWORD
+      database: shinobi
+      volumes:
+        - name: shinobi-db-data
+          mountPath: /var/lib/mysql
+
+variables:
+  - name: DB_PASSWORD
+    value: shinobi123!@#
+    isSecret: true
+  - name: DB_ROOT_PASSWORD
+    value: rootpassword123!@#
+    isSecret: true

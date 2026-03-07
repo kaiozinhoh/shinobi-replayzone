@@ -1,0 +1,84 @@
+{
+  "name": "Shinobi CCTV ReplayZone",
+  "description": "Sistema de CCTV e NVR (Network Video Recorder) de código aberto com interface web moderna",
+  "logo": "https://shinobi.video/libs/assets/icon/apple-icon-180x180.png",
+  "website": "https://shinobi.video",
+  "repository": "https://github.com/kaiozinhoh/shinobi-replayzone",
+  "categories": ["security", "monitoring", "video", "surveillance"],
+  "tags": ["cctv", "nvr", "security", "video", "monitoring", "cameras"],
+  "version": "2.0.0",
+  "author": "ReplayZone",
+  "license": "GPL-3.0",
+  "defaultPort": 8080,
+  "healthCheckPath": "/",
+  "requiresDatabase": true,
+  "databaseType": "mariadb",
+  "volumes": [
+    {
+      "name": "shinobi-data",
+      "description": "Dados da aplicação Shinobi",
+      "mountPath": "/var/lib/shinobi"
+    },
+    {
+      "name": "shinobi-videos", 
+      "description": "Armazenamento de vídeos gravados",
+      "mountPath": "/var/lib/shinobi/videos"
+    },
+    {
+      "name": "shinobi-streams",
+      "description": "Cache de streams de vídeo",
+      "mountPath": "/var/lib/shinobi/streams"
+    }
+  ],
+  "environmentVariables": [
+    {
+      "name": "DB_PASSWORD",
+      "description": "Senha do banco de dados MySQL",
+      "required": true,
+      "secret": true,
+      "defaultValue": "shinobi123!@#"
+    },
+    {
+      "name": "DB_ROOT_PASSWORD",
+      "description": "Senha root do MySQL",
+      "required": true,
+      "secret": true,
+      "defaultValue": "rootpassword123!@#"
+    },
+    {
+      "name": "SUBSCRIPTION_ID",
+      "description": "ID da licença Shinobi Pro (opcional)",
+      "required": false,
+      "defaultValue": "sub_XXXXXXXXXXXX"
+    }
+  ],
+  "instructions": {
+    "afterDeploy": [
+      "Acesse a aplicação na porta 8080",
+      "Login: admin@shinobi.video",
+      "Senha: admin", 
+      "IMPORTANTE: Altere a senha padrão imediatamente",
+      "Configure suas câmeras através da interface web"
+    ],
+    "security": [
+      "Altere as senhas padrão do banco de dados",
+      "Configure SSL/HTTPS em produção",
+      "Use senhas fortes para usuários",
+      "Configure backup dos volumes"
+    ]
+  },
+  "links": [
+    {
+      "name": "Documentação",
+      "url": "https://github.com/kaiozinhoh/shinobi-replayzone/blob/main/README.md"
+    },
+    {
+      "name": "Guia EasyPanel",
+      "url": "https://github.com/kaiozinhoh/shinobi-replayzone/blob/main/README.easypanel.md"
+    },
+    {
+      "name": "Issues/Suporte",
+      "url": "https://github.com/kaiozinhoh/shinobi-replayzone/issues"
+    }
+  ]
+}

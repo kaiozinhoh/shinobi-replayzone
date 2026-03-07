@@ -1,0 +1,80 @@
+# Docker Compose específico para EasyPanel
+version: '3.8'
+
+services:
+  shinobi:
+    image: ghcr.io/kaiozinhoh/shinobi-replayzone:latest
+    container_name: shinobi-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=shinobi-db
+      - DB_USER=shinobi
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DATABASE=shinobi
+      - DB_PORT=3306
+      - DB_TYPE=mysql
+      - SUBSCRIPTION_ID=${SUBSCRIPTION_ID:-}
+      - PLUGIN_KEYS=${PLUGIN_KEYS:-{}}
+      - SSL_ENABLED=${SSL_ENABLED:-false}
+    volumes:
+      - shinobi_data:/var/lib/shinobi
+      - shinobi_videos:/var/lib/shinobi/videos
+      - shinobi_streams:/var/lib/shinobi/streams
+      - shinobi_logs:/var/lib/shinobi/logs
+    depends_on:
+      - shinobi-db
+    networks:
+      - shinobi_network
+    command: ["wait-for-db.sh", "shinobi-db", "3306", "docker-entrypoint.sh", "pm2-runtime", "start", "pm2.yml"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  shinobi-db:
+    image: mariadb:10.11
+    container_name: shinobi-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=shinobi
+      - MYSQL_USER=shinobi
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - shinobi_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=1000
+      --innodb_buffer_pool_size=512M
+
+volumes:
+  shinobi_data:
+    driver: local
+  shinobi_videos:
+    driver: local
+  shinobi_streams:
+    driver: local
+  shinobi_logs:
+    driver: local
+  db_data:
+    driver: local
+
+networks:
+  shinobi_network:
+    driver: bridge

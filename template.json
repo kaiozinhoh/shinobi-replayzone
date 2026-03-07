@@ -1,0 +1,173 @@
+{
+  "name": "Shinobi CCTV",
+  "description": "Sistema de CCTV e NVR (Network Video Recorder) de código aberto",
+  "logo": "https://shinobi.video/libs/assets/icon/apple-icon-180x180.png",
+  "repository": "https://github.com/kaiozinhoh/shinobi-replayzone",
+  "categories": ["security", "monitoring", "video"],
+  "services": [
+    {
+      "type": "app",
+      "data": {
+        "name": "shinobi",
+        "image": "ghcr.io/kaiozinhoh/shinobi-replayzone:latest",
+        "ports": [
+          {
+            "published": 8080,
+            "target": 8080
+          }
+        ],
+        "environment": [
+          {
+            "key": "NODE_ENV",
+            "value": "production"
+          },
+          {
+            "key": "DB_HOST",
+            "value": "shinobi-db"
+          },
+          {
+            "key": "DB_USER", 
+            "value": "shinobi"
+          },
+          {
+            "key": "DB_PASSWORD",
+            "value": "$$secret_db_password"
+          },
+          {
+            "key": "DB_DATABASE",
+            "value": "shinobi"
+          },
+          {
+            "key": "DB_ROOT_PASSWORD",
+            "value": "$$secret_db_root_password"
+          },
+          {
+            "key": "DB_PORT",
+            "value": "3306"
+          },
+          {
+            "key": "DB_TYPE",
+            "value": "mysql"
+          },
+          {
+            "key": "SHINOBI_PORT",
+            "value": "8080"
+          },
+          {
+            "key": "SUBSCRIPTION_ID",
+            "value": "sub_XXXXXXXXXXXX"
+          },
+          {
+            "key": "PLUGIN_KEYS",
+            "value": "{}"
+          },
+          {
+            "key": "SSL_ENABLED",
+            "value": "false"
+          }
+        ],
+        "volumes": [
+          {
+            "name": "shinobi_data",
+            "mountPath": "/var/lib/shinobi"
+          },
+          {
+            "name": "shinobi_videos",
+            "mountPath": "/var/lib/shinobi/videos"
+          },
+          {
+            "name": "shinobi_streams",
+            "mountPath": "/var/lib/shinobi/streams"
+          }
+        ],
+        "restart": "unless-stopped",
+        "command": ["wait-for-db.sh", "shinobi-db", "3306", "docker-entrypoint.sh", "pm2-runtime", "start", "pm2.yml"],
+        "healthCheck": {
+          "test": ["CMD", "curl", "-f", "http://localhost:8080/"],
+          "interval": "30s",
+          "timeout": "10s",
+          "retries": 3,
+          "startPeriod": "60s"
+        }
+      }
+    },
+    {
+      "type": "mariadb",
+      "data": {
+        "name": "shinobi-db",
+        "image": "mariadb:10.11",
+        "environment": [
+          {
+            "key": "MYSQL_ROOT_PASSWORD",
+            "value": "$$secret_db_root_password"
+          },
+          {
+            "key": "MYSQL_DATABASE",
+            "value": "shinobi"
+          },
+          {
+            "key": "MYSQL_USER",
+            "value": "shinobi"
+          },
+          {
+            "key": "MYSQL_PASSWORD",
+            "value": "$$secret_db_password"
+          },
+          {
+            "key": "MYSQL_CHARSET",
+            "value": "utf8mb4"
+          },
+          {
+            "key": "MYSQL_COLLATION",
+            "value": "utf8mb4_unicode_ci"
+          }
+        ],
+        "volumes": [
+          {
+            "name": "shinobi_db_data",
+            "mountPath": "/var/lib/mysql"
+          }
+        ],
+        "restart": "unless-stopped",
+        "command": [
+          "--character-set-server=utf8mb4",
+          "--collation-server=utf8mb4_unicode_ci",
+          "--max_connections=1000",
+          "--innodb_buffer_pool_size=512M"
+        ],
+        "healthCheck": {
+          "test": ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"],
+          "interval": "10s",
+          "timeout": "5s",
+          "retries": 5,
+          "startPeriod": "30s"
+        }
+      }
+    }
+  ],
+  "variables": [
+    {
+      "id": "$$secret_db_password",
+      "name": "Database Password",
+      "description": "Senha para o usuário do banco de dados MySQL",
+      "defaultValue": "shinobi123!@#",
+      "isSecret": true
+    },
+    {
+      "id": "$$secret_db_root_password", 
+      "name": "Database Root Password",
+      "description": "Senha para o usuário root do MySQL",
+      "defaultValue": "rootpassword123!@#",
+      "isSecret": true
+    }
+  ],
+  "instructions": {
+    "start": "Após o deploy, acesse a aplicação na porta 8080. Use as credenciais padrão: admin@shinobi.video / admin",
+    "notes": [
+      "Altere a senha padrão na primeira configuração",
+      "Configure suas câmeras através da interface web",
+      "Os vídeos são armazenados no volume shinobi_videos",
+      "Para configurações avançadas, edite as variáveis de ambiente"
+    ]
+  }
+}

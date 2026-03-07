@@ -23,7 +23,7 @@ O build estava falhando porque o EasyPanel estava usando o Dockerfile antigo com
 
 ### 3. Configurar Variáveis de Ambiente
 
-No EasyPanel, adicione estas variáveis de ambiente:
+**IMPORTANTE**: No EasyPanel, certifique-se de configurar EXATAMENTE estas variáveis:
 
 ```env
 NODE_ENV=production
@@ -39,6 +39,11 @@ SUBSCRIPTION_ID=sub_XXXXXXXXXXXX
 PLUGIN_KEYS={}
 SSL_ENABLED=false
 ```
+
+**⚠️ ATENÇÃO**: 
+- `DB_HOST` DEVE ser `shinobi-db` (nome do serviço do banco)
+- NÃO use `localhost` ou `127.0.0.1`
+- As senhas devem ser as mesmas nos dois serviços
 
 ### 4. Configurar Banco de Dados
 

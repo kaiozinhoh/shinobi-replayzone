@@ -16,15 +16,15 @@ mkdir -p /var/lib/shinobi/{videos,streams,logs,backup}
 # Sempre recriar o arquivo de configuração para garantir que as variáveis estejam corretas
 log "Configurando arquivo de configuração..."
 
-# Forçar configurações corretas para EasyPanel
-export DB_HOST="shinobi-db"
-export DB_USER="shinobi"
-export DB_DATABASE="shinobi"
-export DB_PORT="3306"
+# Usar as variáveis de ambiente que o usuário definiu
+export DB_HOST="${DB_HOST:-db}"
+export DB_USER="${DB_USER:-shinobi}"
+export DB_DATABASE="${DB_DATABASE:-shinobi}"
+export DB_PORT="${DB_PORT:-3306}"
 export DB_PASSWORD="${DB_PASSWORD:-shinobi123}"
 
-# Log para debug
-log "FORÇANDO configurações corretas para EasyPanel:"
+# Log das configurações do usuário
+log "Usando configurações das variáveis de ambiente:"
 
 # Log das variáveis (com senha mascarada)
 log "Aplicando variáveis de ambiente..."
@@ -62,17 +62,7 @@ cat > /home/Shinobi/conf.json << EOF
     "password": "${DB_PASSWORD}",
     "database": "${DB_DATABASE}",
     "port": ${DB_PORT},
-    "type": "mysql",
-    "client": "mysql2",
-    "connection": {
-      "host": "${DB_HOST}",
-      "port": ${DB_PORT},
-      "user": "${DB_USER}",
-      "password": "${DB_PASSWORD}",
-      "database": "${DB_DATABASE}",
-      "charset": "utf8mb4",
-      "timezone": "UTC"
-    }
+    "type": "mysql"
   },
   "mail": {
     "service": "gmail",

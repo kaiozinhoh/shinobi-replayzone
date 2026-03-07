@@ -15,14 +15,20 @@ mkdir -p /var/lib/shinobi/{videos,streams,logs,backup}
 
 # Sempre recriar o arquivo de configuração para garantir que as variáveis estejam corretas
 log "Configurando arquivo de configuração..."
-cp /home/Shinobi/conf.docker.json /home/Shinobi/conf.json
 
-# Substituir variáveis de ambiente no arquivo de configuração
+# Definir valores padrão se as variáveis não estiverem definidas
+export DB_HOST="${DB_HOST:-db}"
+export DB_USER="${DB_USER:-shinobi}"
+export DB_DATABASE="${DB_DATABASE:-shinobi}"
+export DB_PORT="${DB_PORT:-3306}"
+export DB_PASSWORD="${DB_PASSWORD:-shinobi123}"
+
+# Log das variáveis (com senha mascarada)
 log "Aplicando variáveis de ambiente..."
-log "DB_HOST: ${DB_HOST:-db}"
-log "DB_USER: ${DB_USER:-shinobi}"
-log "DB_DATABASE: ${DB_DATABASE:-shinobi}"
-log "DB_PORT: ${DB_PORT:-3306}"
+log "DB_HOST: ${DB_HOST}"
+log "DB_USER: ${DB_USER}"
+log "DB_DATABASE: ${DB_DATABASE}"
+log "DB_PORT: ${DB_PORT}"
 if [ -n "$DB_PASSWORD" ]; then
     log "DB_PASSWORD: ****** (definida)"
 else

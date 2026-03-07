@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_USER=shinobi
+      - DB_PASSWORD=${DB_PASSWORD:-shinobi123}
+      - DB_DATABASE=shinobi
+      - DB_PORT=3306
+      - DB_TYPE=mysql
+      - SHINOBI_PORT=8080
+      - SUBSCRIPTION_ID=${SUBSCRIPTION_ID:-sub_XXXXXXXXXXXX}
+      - PLUGIN_KEYS=${PLUGIN_KEYS:-{}}
+      - SSL_ENABLED=${SSL_ENABLED:-false}
+    volumes:
+      - shinobi_data:/var/lib/shinobi
+      - shinobi_videos:/var/lib/shinobi/videos
+      - shinobi_streams:/var/lib/shinobi/streams
+    depends_on:
+      - db
+    command: ["wait-for-db.sh", "db", "3306", "docker-entrypoint.sh", "pm2-runtime", "start", "pm2.yml"]
+
+  db:
+    image: mariadb:10.11
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-rootpass123}
+      - MYSQL_DATABASE=shinobi
+      - MYSQL_USER=shinobi
+      - MYSQL_PASSWORD=${DB_PASSWORD:-shinobi123}
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=1000
+      --innodb_buffer_pool_size=512M
+
+volumes:
+  shinobi_data:
+  shinobi_videos:
+  shinobi_streams:
+  db_data:

@@ -6,3 +6,10 @@ apps:
   - script   : '/home/Shinobi/replay-server/server.js'
     name     : 'replay-server'
     kill_timeout  : 5000
+    env:
+      NODE_ENV: 'production'
+      PORT: 3010
+      SHINOBI_VIDEOS_PATH: '/var/lib/shinobi/videos'
+      FTP_VIDEOS_PATH: '/var/www/replay-videos'
+      HLS_PATH: '/app/hls'
+      TEMP_PATH: '/app/temp'

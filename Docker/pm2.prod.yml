@@ -27,6 +27,11 @@ apps:
       PORT: 3010
       # Garante que o replay use os mesmos vídeos que o Shinobi
       SHINOBI_VIDEOS_PATH: '/var/lib/shinobi/videos'
+      # Diretório onde o replay moverá os vídeos prontos (servido pelo Nginx em /videos/)
+      FTP_VIDEOS_PATH: '/var/www/replay-videos'
+      # Diretórios internos do replay-server
+      HLS_PATH: '/app/hls'
+      TEMP_PATH: '/app/temp'
     error_file: '/var/lib/shinobi/logs/replay-error.log'
     out_file: '/var/lib/shinobi/logs/replay-out.log'
     log_file: '/var/lib/shinobi/logs/replay.log'

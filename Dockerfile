@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     net-tools \
     netcat-openbsd \
+    nginx \
     sudo \
     procps \
     coreutils \
@@ -65,8 +66,13 @@ RUN npm install -g pm2
 RUN groupadd -r shinobi && useradd -r -g shinobi shinobi
 
 # Criar diretórios necessários
-RUN mkdir -p /home/Shinobi /var/lib/shinobi/videos /var/lib/shinobi/streams \
-    && chown -R shinobi:shinobi /home/Shinobi /var/lib/shinobi
+RUN mkdir -p /home/Shinobi \
+    /var/lib/shinobi/videos \
+    /var/lib/shinobi/streams \
+    /var/www/replay-videos \
+    /app/hls \
+    /app/temp \
+    && chown -R shinobi:shinobi /home/Shinobi /var/lib/shinobi /var/www/replay-videos /app/hls /app/temp
 
 WORKDIR /home/Shinobi
 
@@ -87,6 +93,7 @@ COPY --chown=shinobi:shinobi Docker/pm2.prod.yml ./pm2.yml
 COPY --chown=shinobi:shinobi docker-entrypoint.sh /usr/local/bin/
 COPY --chown=shinobi:shinobi wait-for-db.sh /usr/local/bin/
 COPY --chown=shinobi:shinobi conf.docker.json ./
+COPY nginx-replay.conf /etc/nginx/conf.d/replay.conf
 
 # Dar permissões necessárias
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
@@ -95,13 +102,14 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
     chmod -R 755 plugins && \
     sed -i -e 's/\r//g' Docker/init.sh && \
     sed -i -e 's/\r//g' /usr/local/bin/docker-entrypoint.sh && \
-    sed -i -e 's/\r//g' /usr/local/bin/wait-for-db.sh
+    sed -i -e 's/\r//g' /usr/local/bin/wait-for-db.sh && \
+    rm -f /etc/nginx/sites-enabled/default
 
 # Criar volumes para dados persistentes
 VOLUME ["/var/lib/shinobi"]
 
 # Expor portas
-EXPOSE 8080 3010
+EXPOSE 8080 3010 8081
 
 # Usar usuário não-root
 USER shinobi

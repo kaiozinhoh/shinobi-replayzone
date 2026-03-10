@@ -58,7 +58,7 @@ class FileService {
     }
     
     await fs.promises.rename(videoPath, targetPath);
-    return `https://cam.replayzone.com.br/videos/${videoName}`;
+    return `https://videos.replayzone.com.br/videos/${videoName}`;
   }
 
   cleanupTempFiles(files) {

@@ -10,7 +10,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Instalar dependências do Shinobi (raiz)
 COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Instalar dependências do replay-server em estágio de build
+WORKDIR /app/replay-server
+COPY replay-server/package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
 # Imagem final
@@ -63,10 +70,14 @@ RUN mkdir -p /home/Shinobi /var/lib/shinobi/videos /var/lib/shinobi/streams \
 
 WORKDIR /home/Shinobi
 
-# Copiar node_modules do builder
+# Copiar node_modules do builder (Shinobi)
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copiar código da aplicação
+# Copiar node_modules do replay-server
+RUN mkdir -p replay-server
+COPY --from=builder /app/replay-server/node_modules ./replay-server/node_modules
+
+# Copiar código da aplicação (Shinobi + replay-server)
 COPY --chown=shinobi:shinobi . .
 
 # Copiar configuração PM2 otimizada
@@ -90,7 +101,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
 VOLUME ["/var/lib/shinobi"]
 
 # Expor portas
-EXPOSE 8080
+EXPOSE 8080 3010
 
 # Usar usuário não-root
 USER shinobi

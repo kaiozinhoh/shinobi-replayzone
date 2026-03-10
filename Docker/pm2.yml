@@ -2,3 +2,7 @@ apps:
   - script   : '/home/Shinobi/camera.js'
     name     : 'camera'
     kill_timeout  : 5000
+
+  - script   : '/home/Shinobi/replay-server/server.js'
+    name     : 'replay-server'
+    kill_timeout  : 5000

@@ -1,15 +1,13 @@
 const path = require('path');
 require('dotenv').config();
 
-// Permite sobrepor configs via variáveis específicas do replay
-// sem conflitar com variáveis usadas pelo Shinobi
-const REPLAY_DB_HOST = process.env.REPLAY_DB_HOST || process.env.DB_HOST;
-const REPLAY_DB_PORT = process.env.REPLAY_DB_PORT || process.env.DB_PORT;
-const REPLAY_DB_USER = process.env.REPLAY_DB_USER || process.env.DB_USER;
-const REPLAY_DB_PASSWORD = process.env.REPLAY_DB_PASSWORD || process.env.DB_PASSWORD;
-const REPLAY_DB_NAME = process.env.REPLAY_DB_NAME || process.env.DB_NAME;
-const REPLAY_DB_CONNECTION_LIMIT =
-  process.env.REPLAY_DB_CONNECTION_LIMIT || process.env.DB_CONNECTION_LIMIT;
+// Banco de dados EXCLUSIVO do replay-server (não usa as variáveis DB_* do Shinobi)
+const REPLAY_DB_HOST = process.env.REPLAY_DB_HOST;
+const REPLAY_DB_PORT = process.env.REPLAY_DB_PORT;
+const REPLAY_DB_USER = process.env.REPLAY_DB_USER;
+const REPLAY_DB_PASSWORD = process.env.REPLAY_DB_PASSWORD;
+const REPLAY_DB_NAME = process.env.REPLAY_DB_NAME;
+const REPLAY_DB_CONNECTION_LIMIT = process.env.REPLAY_DB_CONNECTION_LIMIT;
 
 module.exports = {
   // Onde o Shinobi grava os vídeos dentro do container

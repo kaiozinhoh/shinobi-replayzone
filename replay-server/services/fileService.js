@@ -49,17 +49,28 @@ class FileService {
   }
 
   async moveVideoToFTPDirectory(videoPath, videoName) {
-    const targetPath = path.join(FTP_VIDEOS_PATH, videoName);
-    
-    // Garantir diretório
-    const destDir = path.dirname(targetPath);
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
-    
-    await fs.promises.rename(videoPath, targetPath);
-    return `https://videos.replayzone.com.br/videos/${videoName}`;
+  const targetPath = path.join(FTP_VIDEOS_PATH, videoName);
+  
+  // Garantir diretório
+  const destDir = path.dirname(targetPath);
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
   }
+  
+  // 🔥 CORREÇÃO: Usar copy + unlink em vez de rename
+  try {
+    // Copiar arquivo
+    await fs.promises.copyFile(videoPath, targetPath);
+    // Remover original
+    await fs.promises.unlink(videoPath);
+    console.log(`✅ Arquivo movido com sucesso: ${videoName}`);
+  } catch (error) {
+    console.error(`❌ Erro ao mover arquivo: ${error.message}`);
+    throw error;
+  }
+  
+  return `https://videos.replayzone.com.br/videos/${videoName}`;
+}
 
   cleanupTempFiles(files) {
     console.log(`🧹 Limpando ${files.length} arquivos`);

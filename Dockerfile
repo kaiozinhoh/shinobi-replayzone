@@ -111,8 +111,9 @@ VOLUME ["/var/lib/shinobi"]
 # Expor portas
 EXPOSE 8080 3010 8081
 
-# Usar usuário não-root
-USER shinobi
+# Rodar como root para permitir correção de permissões
+# (bind mount do host, ex: EasyPanel, pode sobrescrever chown do build)
+USER root
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

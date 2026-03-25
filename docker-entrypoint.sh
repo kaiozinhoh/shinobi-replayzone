@@ -13,6 +13,24 @@ log() {
 log "Criando diretórios necessários..."
 mkdir -p /var/lib/shinobi/{videos,streams,logs,backup}
 
+# O replay move os vídeos prontos para /var/www/replay-videos.
+# Quando esse diretório é bind mount do host (EasyPanel), o ownership/permissions
+# frequentemente não combinam com o usuário dentro do container. Isso causa EACCES.
+#
+# Por padrão, tentamos corrigir permissões no boot (pode ser desativado via env).
+FIX_REPLAY_VIDEOS_PERMS="${FIX_REPLAY_VIDEOS_PERMS:-1}"
+if [ "$FIX_REPLAY_VIDEOS_PERMS" = "1" ]; then
+  log "Ajustando permissões de /var/www/replay-videos e /app/temp..."
+  mkdir -p /var/www/replay-videos /app/temp /app/hls || true
+
+  # Deixa o nginx conseguir ler os arquivos servidos.
+  # Mantém o usuário `shinobi` como dono para o replay conseguir escrever.
+  chown -R shinobi:shinobi /app/temp /var/www/replay-videos /app/hls 2>/dev/null || true
+  chmod -R u+rwX,go+rX /var/www/replay-videos 2>/dev/null || true
+  chmod -R u+rwX,go+rX /app/temp 2>/dev/null || true
+  chmod -R u+rwX,go+rX /app/hls 2>/dev/null || true
+fi
+
 # Sempre recriar o arquivo de configuração para garantir que as variáveis estejam corretas
 log "Configurando arquivo de configuração..."
 
